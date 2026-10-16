@@ -50,8 +50,8 @@ table.ros button{border:0;background:none;color:#a33;cursor:pointer;font-size:14
 .lock{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:9}
 .lock.hide{display:none}
 table.ros tr.off{opacity:.45}
-@page{size:A4}
-@page roster{size:A4 landscape}
+@page{size:A4;margin:0}
+@page roster{size:A4 landscape;margin:0}
 .sheet.roster{page:roster}
 @media print{
  html,body{background:#fff}
@@ -59,9 +59,11 @@ table.ros tr.off{opacity:.45}
  .panel,.tabs,.noprint,.lock{display:none!important}
  table.ros tr.off{display:none}
  .stage{overflow:visible}
- .sheet{box-shadow:none;margin:0}
- .sheet.doc{width:auto;min-height:0;padding:0}
- .sheet.roster{width:auto;min-height:0;padding:0}
+ .sheet{box-shadow:none;margin:0;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+ table.ros tr{break-inside:avoid}
+ table.ros thead{display:table-header-group}
+ .sheet.doc{width:210mm;min-height:0;padding:20mm 18mm}
+ .sheet.roster{width:297mm;min-height:0;padding:12mm 10mm}
 }
 </style>
 </head>
@@ -181,6 +183,12 @@ $('tb').addEventListener('click',e=>{const d=e.target.dataset.d;if(d==null)retur
  const w=W.splice(+d,1)[0];S.ws=S.ws.filter(x=>x!==w.id);if(!W.length)W.push({id:nid()});buildRoster()});
 $('add').onclick=()=>{const w={id:nid()};W.push(w);S.ws.push(w.id);buildRoster()};
 $('tabs').addEventListener('click',e=>{const t=e.target.dataset.t;if(!t)return;document.querySelectorAll('.tabs [data-t]').forEach(b=>b.classList.toggle('on',b.dataset.t===t));['a','b','c'].forEach(x=>$('s'+x).classList.toggle('on',x===t))});
+const TITLE0=document.title,DN={a:'着工届',b:'完了届',c:'作業員名簿'};
+function setTitle(){const b=document.querySelector('.tabs [data-t].on'),t=b?b.dataset.t:'a';
+ const d=(S.issued||today()).replace(/-/g,'');
+ document.title=[d,S.site||S.name||'',DN[t]].filter(Boolean).join('_').replace(/[\\\/:*?"<>|]/g,'')}
+window.addEventListener('beforeprint',setTitle);
+window.addEventListener('afterprint',()=>{document.title=TITLE0});
 $('pr').onclick=()=>window.print();
 if(PW)load();else showLock('');
 </script>
