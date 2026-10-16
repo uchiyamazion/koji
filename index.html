@@ -101,7 +101,7 @@ table.ros tr.off{opacity:.45}
 <script>
 const API='https://script.google.com/macros/s/AKfycbxTsuMPW9eX-6GMFgUqJzvXnY1o_-QQIt9wpTj2N2_YU-_NVvLkGathf10HvCcylfMyRQ/exec';
 const CO='シオンテクノス株式会社';
-const FS=[['to','提出先（元請・発注者）','text','○○建設株式会社'],['client','発注者','text',''],['name','工事名','text',''],['place','工事場所','text',''],
+const FS=[['site','現場名（保存名になります）','text','例：○○ビル 空調更新'],['to','提出先（元請・発注者）','text','○○建設株式会社'],['client','発注者','text',''],['name','工事名','text',''],['place','工事場所','text',''],
 ['start','着工日','date'],['end','完工予定日','date'],['done','完了日（空欄なら完工予定日）','date'],['handover','検査・引渡し予定日','date'],
 ['agent','現場代理人','text',''],['chief','主任技術者','text',''],['qual','主任技術者の資格','text','例：1級電気工事施工管理技士'],
 ['issued','届出日（空欄なら今日）','date'],['addr','会社所在地','text',''],['rep','代表者名','text',''],['notes','備考','area']];
@@ -130,11 +130,11 @@ async function load(){
 $('lgo').onclick=()=>{PW=$('lpw').value;sessionStorage.setItem('sion_pw',PW);load()};
 $('lpw').addEventListener('keydown',e=>{if(e.key==='Enter')$('lgo').click()});
 
-function fillSel(){$('sel').innerHTML='<option value="">（新しい工事）</option>'+P.map(p=>`<option value="${esc(p.id)}">${esc(p.name||'（無題）')}</option>`).join('');$('sel').value=S.id||''}
+function fillSel(){$('sel').innerHTML='<option value="">（新しい工事）</option>'+P.map(p=>`<option value="${esc(p.id)}">${esc(p.site||p.name||'（無題）')}</option>`).join('');$('sel').value=S.id||''}
 function openProject(p){S=p?copy(p):{...EMPTY};fillSel();buildForm();buildRoster();render()}
 $('sel').onchange=()=>openProject(P.find(x=>x.id===$('sel').value));
 $('sv').onclick=async()=>{
- if(!S.name){alert('工事名を入力してください');return}
+ if(!S.site){alert('現場名を入力してください');return}
  if(!S.id)S.id=nid();S.ws=S.ws||[];S.updated=new Date().toISOString();
  $('st').textContent='保存中…';
  try{await api('saveProject',{project:S});await api('saveWorkers',{workers:W});
@@ -157,9 +157,9 @@ function head(title,text){const d=wa(S.issued||today());return `<h3>${title}</h3
 <p class="body">${text}</p>`}
 function render(){
  const done=S.done||S.end;
- $('sa').innerHTML=head('着 工 届','下記の工事について、'+wa(S.start)+'に着工しましたので、お届けいたします。')+'<div style="text-align:center;margin-top:8mm">記</div><table class="k">'+row('工事名',S.name)+row('工事場所',S.place)+row('発注者',S.client)+row('工期',term())+row('現場代理人',S.agent)+row('主任技術者',(S.chief||'')+(S.qual?'（'+S.qual+'）':''))+row('備考',S.notes)+'</table>';
- $('sb').innerHTML=head('完 了 届','下記の工事は、'+wa(done)+'に完了しましたので、お届けいたします。')+'<div style="text-align:center;margin-top:8mm">記</div><table class="k">'+row('工事名',S.name)+row('工事場所',S.place)+row('発注者',S.client)+row('工期',term())+row('完了日',wa(done))+row('検査・引渡し予定日',S.handover?wa(S.handover):'')+row('現場代理人',S.agent)+row('備考',S.notes)+'</table>';
- $('rh').innerHTML='工事名：'+esc(S.name)+'<br>会社名：'+CO+'<br>作成日：'+wa(S.issued||today());
+ $('sa').innerHTML=head('着 工 届','下記の工事について、'+wa(S.start)+'に着工しましたので、お届けいたします。')+'<div style="text-align:center;margin-top:8mm">記</div><table class="k">'+(S.site?row('現場名',S.site):'')+row('工事名',S.name)+row('工事場所',S.place)+row('発注者',S.client)+row('工期',term())+row('現場代理人',S.agent)+row('主任技術者',(S.chief||'')+(S.qual?'（'+S.qual+'）':''))+row('備考',S.notes)+'</table>';
+ $('sb').innerHTML=head('完 了 届','下記の工事は、'+wa(done)+'に完了しましたので、お届けいたします。')+'<div style="text-align:center;margin-top:8mm">記</div><table class="k">'+(S.site?row('現場名',S.site):'')+row('工事名',S.name)+row('工事場所',S.place)+row('発注者',S.client)+row('工期',term())+row('完了日',wa(done))+row('検査・引渡し予定日',S.handover?wa(S.handover):'')+row('現場代理人',S.agent)+row('備考',S.notes)+'</table>';
+ $('rh').innerHTML=(S.site?'現場名：'+esc(S.site)+'<br>':'')+'工事名：'+esc(S.name)+'<br>会社名：'+CO+'<br>作成日：'+wa(S.issued||today());
 }
 
 function buildRoster(){
