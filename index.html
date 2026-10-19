@@ -75,6 +75,7 @@ table.ros tr.off{opacity:.45}
  <select id="sel" class="sel" aria-label="工事を選ぶ"></select>
  <div class="two" style="margin-top:8px"><button class="btn" id="sv">保存</button><button class="btn" id="del">削除</button></div>
  <div class="hint" id="st"></div>
+ <button class="btn" id="ph" style="width:100%;margin-top:8px">工事写真を作成（写真アプリを開く）</button>
  <h2>工事の情報（3書類に共通）</h2>
  <p class="hint" style="margin-top:0">入力すると3つの書類すべてに反映されます。「保存」でスプレッドシートに保存されます。</p>
  <div id="form"></div>
@@ -190,6 +191,10 @@ function setTitle(){const b=document.querySelector('.tabs [data-t].on'),t=b?b.da
 window.addEventListener('beforeprint',setTitle);
 window.addEventListener('afterprint',()=>{document.title=TITLE0});
 $('pr').onclick=()=>window.print();
+const PHOTO='https://uchiyamazion.github.io/photo-report/';
+$('ph').onclick=()=>{const q=new URLSearchParams();
+ if(S.site)q.set('site',S.site);if(S.name)q.set('work',S.name);if(S.start)q.set('date',S.start);if(S.to)q.set('to',S.to);
+ window.open(PHOTO+(q.toString()?'?'+q:''),'_blank','noopener')};
 if(PW)load();else showLock('');
 </script>
 </body>
