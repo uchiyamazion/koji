@@ -80,6 +80,7 @@ table.ap th,table.ap td{border:1px solid #000;height:12mm}table.ap td{height:28m
  .sheet.roster{width:297mm;min-height:0;padding:12mm 10mm}
 }
 </style>
+<script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
 </head>
 <body>
 <div class="lock" id="lock"><div class="panel" style="width:min(320px,90vw)"><h1>ログイン</h1><label for="lpw">パスワード</label><input type="password" id="lpw" autocomplete="current-password"><button class="btn" id="lgo" style="margin-top:10px;width:100%">入る</button><p class="hint" id="lmsg"></p></div></div>
@@ -213,11 +214,43 @@ $('pr').onclick=()=>window.print();
 const KF=[['title','報告書名','text','工事完了報告書'],['cname','工事注文者の会社名（空欄なら発注者）','text',''],['caddr','工事注文者の住所','text',''],
 ['old','更新対象既設機器詳細（自由記入）','area','機種・型式・製造番号など'],['new','納入機器一覧（自由記入）','area','機種・型式・製造番号など'],
 ['sumt','工事概要の見出し','text','例：室外機更新工事'],['sum','工事概要（1行1項目）','area',''],['chap','3章以降の章名（1行1章）','area','']];
+const MHTML=`<h2>PDFを1冊にまとめる</h2><p class="hint" style="margin-top:0">① プレビューを「印刷・PDF保存」で保存 → ② そのPDFを下で選択 → ③ 各章に付けるPDF（メーカー資料など）を選択 → ④ まとめる</p>
+<label>① このアプリから保存した完成図書PDF</label><input type="file" id="mbase" accept="application/pdf"><div id="mrows"></div>
+<label style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="mnum" checked style="width:auto">表紙・目次を除いてページ番号を付ける</label>
+<button class="btn" id="mgo" style="width:100%;margin-top:8px">1冊のPDFにまとめる</button><div class="hint" id="mst"></div>`;
+let ATT={};
+const chaps=()=>String((S.k&&S.k.chap!=null)?S.k.chap:CHAP0).split('\n').map(x=>x.trim()).filter(Boolean);
+function buildM(){const ch=chaps();
+ $('mrows').innerHTML=ch.map((c,i)=>`<label>${i+3}．${esc(c)}に付けるPDF（複数可・ファイル名順）</label><input type="file" accept="application/pdf" multiple data-mi="${i}"><div class="hint">${(ATT[i]||[]).map(f=>esc(f.name)).join('<br>')}</div>`).join('');
+ $('mrows').querySelectorAll('[data-mi]').forEach(el=>el.addEventListener('change',()=>{ATT[el.dataset.mi]=[...el.files].sort((a,b)=>a.name.localeCompare(b.name,'ja'));buildM()}))}
+async function mergePdf(){
+ const st=$('mst'),base=$('mbase').files[0];
+ if(!base){alert('①の完成図書PDFを選んでください（先に「印刷・PDF保存」で作ります）');return}
+ if(!window.PDFLib){alert('PDFライブラリを読み込めませんでした。通信状況を確認してください');return}
+ const {PDFDocument,StandardFonts,rgb,degrees}=PDFLib,ch=chaps(),k=ch.length;
+ try{st.textContent='結合中…';
+  const src=await PDFDocument.load(await base.arrayBuffer()),n=src.getPageCount();
+  if(n<k+4){alert('ページ数が足りません。表紙・目次・1章・2章と章扉'+k+'枚が必要です（現在'+n+'ページ）');st.textContent='';return}
+  const out=await PDFDocument.create(),cp=async(d,ix)=>{(await out.copyPages(d,ix)).forEach(p=>out.addPage(p))};
+  await cp(src,[...Array(n-k).keys()]);
+  for(let i=0;i<k;i++){await cp(src,[n-k+i]);
+   for(const f of (ATT[i]||[])){const d=await PDFDocument.load(await f.arrayBuffer(),{ignoreEncryption:true});await cp(d,d.getPageIndices())}}
+  if($('mnum').checked){const font=await out.embedFont(StandardFonts.Helvetica);
+   out.getPages().forEach((p,i)=>{if(i<2)return;const {width:W,height:H}=p.getSize(),t=String(i+1),w=font.widthOfTextAtSize(t,9),a=((p.getRotation().angle%360)+360)%360,o={size:9,font,color:rgb(.3,.3,.3)};
+    if(a===90)p.drawText(t,{...o,x:W-14,y:H/2-w/2,rotate:degrees(90)});
+    else if(a===270)p.drawText(t,{...o,x:14,y:H/2+w/2,rotate:degrees(-90)});
+    else if(a===180)p.drawText(t,{...o,x:W/2+w/2,y:H-14,rotate:degrees(180)});
+    else p.drawText(t,{...o,x:W/2-w/2,y:14})})}
+  const bytes=await out.save(),u=URL.createObjectURL(new Blob([bytes],{type:'application/pdf'})),el=document.createElement('a');
+  el.href=u;el.download=[(S.issued||today()).replace(/-/g,''),S.site||S.name||'','完成図書'].filter(Boolean).join('_').replace(/[\\\/:*?"<>|]/g,'')+'.pdf';
+  document.body.appendChild(el);el.click();el.remove();setTimeout(()=>URL.revokeObjectURL(u),5000);
+  st.textContent='完了：'+out.getPageCount()+'ページのPDFを保存しました'}
+ catch(e){console.error(e);st.textContent='失敗：'+e.message}}
 const CHAP0='工事写真報告書\n納入機器仕様\n試運転報告書\n保証書\n品質証明書';
 function buildK(){S.k=S.k||{};
  $('kform').innerHTML='<h2>完成図書の追加項目</h2><p class="hint" style="margin-top:0">宛先・所在地・工期・工事場所は上の共通項目から自動で入ります。</p>'+KF.map(([k,l,t,p])=>`<label>${l}</label>`+(t==='area'?`<textarea rows="${k==='chap'?5:4}" data-kk="${k}" placeholder="${esc(p)}"></textarea>`:`<input data-kk="${k}" placeholder="${esc(p)}">`)).join('');
  $('kform').querySelectorAll('[data-kk]').forEach(el=>{const k=el.dataset.kk;el.value=S.k[k]!=null?S.k[k]:(k==='chap'?CHAP0:'');
-  el.addEventListener('input',()=>{S.k[k]=el.value;renderK()})})}
+  el.addEventListener('input',()=>{S.k[k]=el.value;renderK();if(k==='chap')buildM()})});$('kform').insertAdjacentHTML('beforeend',MHTML);$('mgo').onclick=mergePdf;buildM()}
 function renderK(){const K=S.k||{};
  const ln=t=>String(t||'').split('\n').map(x=>x.trim()).filter(Boolean);
  const ch=ln(K.chap!=null?K.chap:CHAP0);
