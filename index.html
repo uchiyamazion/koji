@@ -50,6 +50,18 @@ table.ros button{border:0;background:none;color:#a33;cursor:pointer;font-size:14
 .lock{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:9}
 .lock.hide{display:none}
 table.ros tr.off{opacity:.45}
+.sheet#sd{padding:0}
+.pg{padding:22mm 20mm;min-height:297mm;box-sizing:border-box;border-bottom:1px dashed #bbb;line-height:1.7}
+.pg h4{text-align:center;font-size:20px;letter-spacing:.4em;margin:6mm 0 14mm;font-weight:600}
+.bh{font-weight:600;margin:6mm 0 1mm}
+.pre{white-space:pre-wrap;padding-left:1.2em;font-size:14px}
+.cv{text-align:center}.cto{font-size:22px;font-weight:600;margin-top:45mm}.cnm{font-size:18px;text-decoration:underline;margin-top:35mm}
+.cbx{border:1px solid #000;font-size:24px;font-weight:600;padding:10px;margin:40mm 6mm 0}
+table.ap{width:calc(100% - 12mm);margin:30mm 6mm 0;border-collapse:collapse}
+table.ap th,table.ap td{border:1px solid #000;height:12mm}table.ap td{height:28mm}
+.cft{margin-top:40mm;font-size:18px;line-height:2}
+.toc{width:60mm;margin:0 auto;font-size:18px;letter-spacing:.3em;line-height:3}
+#kform textarea{min-height:60px}
 @page{size:A4;margin:0}
 @page roster{size:A4 landscape;margin:0}
 .sheet.roster{page:roster}
@@ -58,6 +70,8 @@ table.ros tr.off{opacity:.45}
  .app{display:block;padding:0;max-width:none}
  .panel,.tabs,.noprint,.lock{display:none!important}
  table.ros tr.off{display:none}
+ .pg{min-height:295mm;border:0;break-after:page}
+ .pg:last-child{break-after:auto}
  .stage{overflow:visible}
  .sheet{box-shadow:none;margin:0;-webkit-print-color-adjust:exact;print-color-adjust:exact}
  table.ros tr{break-inside:avoid}
@@ -79,6 +93,7 @@ table.ros tr.off{opacity:.45}
  <h2>工事の情報（3書類に共通）</h2>
  <p class="hint" style="margin-top:0">入力すると3つの書類すべてに反映されます。「保存」でスプレッドシートに保存されます。</p>
  <div id="form"></div>
+ <div id="kform" style="display:none"></div>
  <p class="hint">作業員は全工事共通のマスタです。工事ごとに「載せる」にチェックした人だけが名簿に出ます。</p>
 </div>
 <div>
@@ -86,6 +101,7 @@ table.ros tr.off{opacity:.45}
   <button data-t="a" class="on">着工届</button>
   <button data-t="b">完了届</button>
   <button data-t="c">作業員名簿</button>
+  <button data-t="d">完成図書</button>
   <button class="print" id="pr">この書類を印刷・PDF保存</button>
  </div>
  <div class="stage">
@@ -96,6 +112,7 @@ table.ros tr.off{opacity:.45}
    <table class="ros"><thead><tr><th class="noprint" style="width:40px">載せる</th><th style="width:30px">No</th><th>氏名</th><th>生年月日</th><th>年齢</th><th>職種</th><th>資格・免許</th><th>雇入年月日</th><th>健康診断日</th><th>社会保険</th><th>緊急連絡先</th><th class="noprint" style="width:28px"></th></tr></thead><tbody id="tb"></tbody></table>
    <button class="btn addrow noprint" id="add">＋ 行を追加</button>
   </div>
+  <div class="sheet doc" id="sd"></div>
  </div>
 </div>
 </div>
@@ -152,7 +169,7 @@ $('del').onclick=async()=>{
 
 function buildForm(){
  $('form').innerHTML=FS.map(([k,l,t,p])=>t==='area'?`<label>${l}</label><textarea rows="2" data-k="${k}"></textarea>`:`<label>${l}</label><input type="${t}" data-k="${k}" placeholder="${p||''}">`).join('');
- document.querySelectorAll('[data-k]').forEach(el=>{el.value=S[el.dataset.k]||'';el.addEventListener('input',()=>{S[el.dataset.k]=el.value;render()})})}
+ document.querySelectorAll('[data-k]').forEach(el=>{el.value=S[el.dataset.k]||'';el.addEventListener('input',()=>{S[el.dataset.k]=el.value;render()})});buildK()}
 const row=(l,v)=>`<tr><th>${l}</th><td>${esc(v)}</td></tr>`;
 function head(title,text){const d=wa(S.issued||today());return `<h3>${title}</h3><div class="r">${d}</div>
 <div class="to">${esc(S.to)||'　　　　　　'}　御中</div>
@@ -163,6 +180,7 @@ function render(){
  $('sa').innerHTML=head('着 工 届','下記の工事について、'+wa(S.start)+'に着工しましたので、お届けいたします。')+'<div style="text-align:center;margin-top:8mm">記</div><table class="k">'+(S.site?row('現場名',S.site):'')+row('工事名',S.name)+row('工事場所',S.place)+row('発注者',S.client)+row('工期',term())+row('現場代理人',S.agent)+row('主任技術者',(S.chief||'')+(S.qual?'（'+S.qual+'）':''))+row('備考',S.notes)+'</table>';
  $('sb').innerHTML=head('完 了 届','下記の工事は、'+wa(done)+'に完了しましたので、お届けいたします。')+'<div style="text-align:center;margin-top:8mm">記</div><table class="k">'+(S.site?row('現場名',S.site):'')+row('工事名',S.name)+row('工事場所',S.place)+row('発注者',S.client)+row('工期',term())+row('完了日',wa(done))+row('検査・引渡し予定日',S.handover?wa(S.handover):'')+row('現場代理人',S.agent)+row('備考',S.notes)+'</table>';
  $('rh').innerHTML=(S.site?'現場名：'+esc(S.site)+'<br>':'')+'工事名：'+esc(S.name)+'<br>会社名：'+CO+'<br>作成日：'+wa(S.issued||today());
+ renderK();
 }
 
 function buildRoster(){
@@ -183,14 +201,34 @@ $('tb').addEventListener('click',e=>{const d=e.target.dataset.d;if(d==null)retur
  if(!confirm('この作業員をマスタから削除しますか？（保存すると他の工事の名簿からも消えます）'))return;
  const w=W.splice(+d,1)[0];S.ws=S.ws.filter(x=>x!==w.id);if(!W.length)W.push({id:nid()});buildRoster()});
 $('add').onclick=()=>{const w={id:nid()};W.push(w);S.ws.push(w.id);buildRoster()};
-$('tabs').addEventListener('click',e=>{const t=e.target.dataset.t;if(!t)return;document.querySelectorAll('.tabs [data-t]').forEach(b=>b.classList.toggle('on',b.dataset.t===t));['a','b','c'].forEach(x=>$('s'+x).classList.toggle('on',x===t))});
-const TITLE0=document.title,DN={a:'着工届',b:'完了届',c:'作業員名簿'};
+$('tabs').addEventListener('click',e=>{const t=e.target.dataset.t;if(!t)return;document.querySelectorAll('.tabs [data-t]').forEach(b=>b.classList.toggle('on',b.dataset.t===t));['a','b','c','d'].forEach(x=>$('s'+x).classList.toggle('on',x===t));$('kform').style.display=t==='d'?'block':'none'});
+const TITLE0=document.title,DN={a:'着工届',b:'完了届',c:'作業員名簿',d:'完成図書'};
 function setTitle(){const b=document.querySelector('.tabs [data-t].on'),t=b?b.dataset.t:'a';
  const d=(S.issued||today()).replace(/-/g,'');
  document.title=[d,S.site||S.name||'',DN[t]].filter(Boolean).join('_').replace(/[\\\/:*?"<>|]/g,'')}
 window.addEventListener('beforeprint',setTitle);
 window.addEventListener('afterprint',()=>{document.title=TITLE0});
 $('pr').onclick=()=>window.print();
+
+const KF=[['title','報告書名','text','工事完了報告書'],['cname','工事注文者の会社名（空欄なら発注者）','text',''],['caddr','工事注文者の住所','text',''],
+['old','更新対象既設機器詳細（自由記入）','area','機種・型式・製造番号など'],['new','納入機器一覧（自由記入）','area','機種・型式・製造番号など'],
+['sumt','工事概要の見出し','text','例：室外機更新工事'],['sum','工事概要（1行1項目）','area',''],['chap','3章以降の章名（1行1章）','area','']];
+const CHAP0='工事写真報告書\n納入機器仕様\n試運転報告書\n保証書\n品質証明書';
+function buildK(){S.k=S.k||{};
+ $('kform').innerHTML='<h2>完成図書の追加項目</h2><p class="hint" style="margin-top:0">宛先・所在地・工期・工事場所は上の共通項目から自動で入ります。</p>'+KF.map(([k,l,t,p])=>`<label>${l}</label>`+(t==='area'?`<textarea rows="${k==='chap'?5:4}" data-kk="${k}" placeholder="${esc(p)}"></textarea>`:`<input data-kk="${k}" placeholder="${esc(p)}">`)).join('');
+ $('kform').querySelectorAll('[data-kk]').forEach(el=>{const k=el.dataset.kk;el.value=S.k[k]!=null?S.k[k]:(k==='chap'?CHAP0:'');
+  el.addEventListener('input',()=>{S.k[k]=el.value;renderK()})})}
+function renderK(){const K=S.k||{};
+ const ln=t=>String(t||'').split('\n').map(x=>x.trim()).filter(Boolean);
+ const ch=ln(K.chap!=null?K.chap:CHAP0);
+ const blk=(h,t)=>t&&t.trim()?`<p class="bh">● ${h}</p><div class="pre">${esc(t)}</div>`:'';
+ const sec=(h,b)=>`<div class="pg"><h4>${h}</h4>${b}</div>`;
+ const cover=`<div class="pg cv"><div class="cto">${esc(S.to||'')}　　様</div><div class="cnm">${esc(S.name||'')}</div><div class="cbx">${esc(K.title||'工事完了報告書')}</div><table class="ap"><tr><th>&nbsp;</th><th>&nbsp;</th><th>&nbsp;</th></tr><tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr></table><div class="cft">${wa(S.issued||today())}<br>${CO}</div></div>`;
+ const toc=`<div class="pg"><h4>目　　次</h4><div class="toc">`+['納入内容','工事概要',...ch].map((c,i)=>`<div>${i+1}．${esc(c)}</div>`).join('')+`</div></div>`;
+ const c1=sec('1．納入内容',blk('工事注文者',((K.cname||S.client||'')+'\n'+(K.caddr||'')).trim())+blk('工事請負者',CO+'\n'+(S.addr||''))+blk('納入場所',S.place||'')+blk('工事時期','（自）'+wa(S.start)+'\n（至）'+wa(S.end))+blk('更新対象既設機器詳細',K.old)+blk('納入機器一覧',K.new));
+ const items=ln(K.sum).map(x=>'・'+x.replace(/^[・･]\s*/,'')).join('\n');
+ const c2=sec('2．工事概要',blk(K.sumt||'工事概要',items));
+ $('sd').innerHTML=cover+toc+c1+c2+ch.map((c,i)=>sec((i+3)+'．'+esc(c),'')).join('')}
 const PHOTO='https://uchiyamazion.github.io/photo-report/';
 $('ph').onclick=()=>{const q=new URLSearchParams();
  if(S.site)q.set('site',S.site);if(S.name)q.set('work',S.name);if(S.start)q.set('date',S.start);if(S.to)q.set('to',S.to);
