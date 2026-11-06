@@ -50,6 +50,7 @@ table.ros button{border:0;background:none;color:#a33;cursor:pointer;font-size:14
 .lock{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:9}
 .lock.hide{display:none}
 table.ros tr.off{opacity:.45}
+.ck{display:flex;gap:8px;align-items:center;color:var(--ink);font-size:13px}.ck input{width:auto!important}
 .sheet#sd{padding:0}
 .pg{padding:22mm 20mm;min-height:297mm;box-sizing:border-box;border-bottom:1px dashed #bbb;line-height:1.7}
 .pg h4{text-align:center;font-size:20px;letter-spacing:.4em;margin:6mm 0 14mm;font-weight:600}
@@ -123,9 +124,9 @@ table.ap th,table.ap td{border:1px solid #000;height:12mm}table.ap td{height:28m
 const API='https://script.google.com/macros/s/AKfycbxTsuMPW9eX-6GMFgUqJzvXnY1o_-QQIt9wpTj2N2_YU-_NVvLkGathf10HvCcylfMyRQ/exec';
 const CO='シオンテクノス株式会社';
 const FS=[['site','現場名（保存名になります）','text','例：○○ビル 空調更新'],['to','提出先（元請・発注者）','text','○○建設株式会社'],['client','発注者','text',''],['name','工事名','text',''],['place','工事場所','text',''],
-['start','着工日','date'],['end','完工予定日','date'],['done','完了日（空欄なら完工予定日）','date'],['handover','検査・引渡し予定日','date'],
+['start','着工日','date'],['end','完工予定日','date'],['done','完了日（空欄なら完工予定日）','date'],['doneBlank','完了日を空欄にする（手書き用）','chk'],['handover','検査・引渡し予定日','date'],
 ['agent','現場代理人','text',''],['chief','主任技術者','text',''],['qual','主任技術者の資格','text','例：1級電気工事施工管理技士'],
-['issued','届出日（空欄なら今日）','date'],['addr','会社所在地','text',''],['rep','代表者名','text',''],['notes','備考','area']];
+['issued','届出日（空欄なら今日）','date'],['issuedBlank','届出日を空欄にする（手書き用）','chk'],['addr','会社所在地','text',''],['rep','代表者名','text',''],['notes','備考','area']];
 const EMPTY={addr:'北海道札幌市東区北２４条東４丁目１-１',rep:'村野　篤'};
 let S={...EMPTY},W=[],P=[],PW=sessionStorage.getItem('sion_pw')||'';
 const $=id=>document.getElementById(id);
@@ -168,19 +169,20 @@ $('del').onclick=async()=>{
  try{await api('deleteProject',{id:S.id});P=P.filter(p=>p.id!==S.id);openProject(null);$('st').textContent='削除しました'}
  catch(e){$('st').textContent='削除に失敗：'+e.message}};
 
+function idate(){return S.issuedBlank?wa(''):wa(S.issued||today())}
 function buildForm(){
- $('form').innerHTML=FS.map(([k,l,t,p])=>t==='area'?`<label>${l}</label><textarea rows="2" data-k="${k}"></textarea>`:`<label>${l}</label><input type="${t}" data-k="${k}" placeholder="${p||''}">`).join('');
- document.querySelectorAll('[data-k]').forEach(el=>{el.value=S[el.dataset.k]||'';el.addEventListener('input',()=>{S[el.dataset.k]=el.value;render()})});buildK()}
+ $('form').innerHTML=FS.map(([k,l,t,p])=>t==='chk'?`<label class="ck"><input type="checkbox" data-k="${k}">${l}</label>`:t==='area'?`<label>${l}</label><textarea rows="2" data-k="${k}"></textarea>`:`<label>${l}</label><input type="${t}" data-k="${k}" placeholder="${p||''}">`).join('');
+ document.querySelectorAll('[data-k]').forEach(el=>{if(el.type==='checkbox'){el.checked=!!S[el.dataset.k];el.addEventListener('change',()=>{S[el.dataset.k]=el.checked;render()})}else{el.value=S[el.dataset.k]||'';el.addEventListener('input',()=>{S[el.dataset.k]=el.value;render()})}});buildK()}
 const row=(l,v)=>`<tr><th>${l}</th><td>${esc(v)}</td></tr>`;
-function head(title,text){const d=wa(S.issued||today());return `<h3>${title}</h3><div class="r">${d}</div>
+function head(title,text){const d=idate();return `<h3>${title}</h3><div class="r">${d}</div>
 <div class="to">${esc(S.to)||'　　　　　　'}　御中</div>
 <div class="r">${esc(S.addr)}<br>${CO}<br>代表者　${esc(S.rep)}　　　　　印</div>
 <p class="body">${text}</p>`}
 function render(){
- const done=S.done||S.end;
+ const done=S.doneBlank?'':(S.done||S.end);
  $('sa').innerHTML=head('着 工 届','下記の工事について、'+wa(S.start)+'に着工しましたので、お届けいたします。')+'<div style="text-align:center;margin-top:8mm">記</div><table class="k">'+(S.site?row('現場名',S.site):'')+row('工事名',S.name)+row('工事場所',S.place)+row('発注者',S.client)+row('工期',term())+row('現場代理人',S.agent)+row('主任技術者',(S.chief||'')+(S.qual?'（'+S.qual+'）':''))+row('備考',S.notes)+'</table>';
  $('sb').innerHTML=head('完 了 届','下記の工事は、'+wa(done)+'に完了しましたので、お届けいたします。')+'<div style="text-align:center;margin-top:8mm">記</div><table class="k">'+(S.site?row('現場名',S.site):'')+row('工事名',S.name)+row('工事場所',S.place)+row('発注者',S.client)+row('工期',term())+row('完了日',wa(done))+row('検査・引渡し予定日',S.handover?wa(S.handover):'')+row('現場代理人',S.agent)+row('備考',S.notes)+'</table>';
- $('rh').innerHTML=(S.site?'現場名：'+esc(S.site)+'<br>':'')+'工事名：'+esc(S.name)+'<br>会社名：'+CO+'<br>作成日：'+wa(S.issued||today());
+ $('rh').innerHTML=(S.site?'現場名：'+esc(S.site)+'<br>':'')+'工事名：'+esc(S.name)+'<br>会社名：'+CO+'<br>作成日：'+idate();
  renderK();
 }
 
@@ -256,7 +258,7 @@ function renderK(){const K=S.k||{};
  const ch=ln(K.chap!=null?K.chap:CHAP0);
  const blk=(h,t)=>t&&t.trim()?`<p class="bh">● ${h}</p><div class="pre">${esc(t)}</div>`:'';
  const sec=(h,b)=>`<div class="pg"><h4>${h}</h4>${b}</div>`;
- const cover=`<div class="pg cv"><div class="cto">${esc(S.to||'')}　　様</div><div class="cnm">${esc(S.name||'')}</div><div class="cbx">${esc(K.title||'工事完了報告書')}</div><table class="ap"><tr><th>&nbsp;</th><th>&nbsp;</th><th>&nbsp;</th></tr><tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr></table><div class="cft">${wa(S.issued||today())}<br>${CO}</div></div>`;
+ const cover=`<div class="pg cv"><div class="cto">${esc(S.to||'')}　　様</div><div class="cnm">${esc(S.name||'')}</div><div class="cbx">${esc(K.title||'工事完了報告書')}</div><table class="ap"><tr><th>&nbsp;</th><th>&nbsp;</th><th>&nbsp;</th></tr><tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr></table><div class="cft">${idate()}<br>${CO}</div></div>`;
  const toc=`<div class="pg"><h4>目　　次</h4><div class="toc">`+['納入内容','工事概要',...ch].map((c,i)=>`<div>${i+1}．${esc(c)}</div>`).join('')+`</div></div>`;
  const c1=sec('1．納入内容',blk('工事注文者',((K.cname||S.client||'')+'\n'+(K.caddr||'')).trim())+blk('工事請負者',CO+'\n'+(S.addr||''))+blk('納入場所',S.place||'')+blk('工事時期','（自）'+wa(S.start)+'\n（至）'+wa(S.end))+blk('更新対象既設機器詳細',K.old)+blk('納入機器一覧',K.new));
  const items=ln(K.sum).map(x=>'・'+x.replace(/^[・･]\s*/,'')).join('\n');
