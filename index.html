@@ -207,7 +207,7 @@ $('add').onclick=()=>{const w={id:nid()};W.push(w);S.ws.push(w.id);buildRoster()
 $('tabs').addEventListener('click',e=>{const t=e.target.dataset.t;if(!t)return;document.querySelectorAll('.tabs [data-t]').forEach(b=>b.classList.toggle('on',b.dataset.t===t));['a','b','c','d'].forEach(x=>$('s'+x).classList.toggle('on',x===t));$('kform').style.display=t==='d'?'block':'none'});
 const TITLE0=document.title,DN={a:'着工届',b:'完了届',c:'作業員名簿',d:'完成図書'};
 function setTitle(){const b=document.querySelector('.tabs [data-t].on'),t=b?b.dataset.t:'a';
- const d=(S.issued||today()).replace(/-/g,'');
+ const d=(S.issuedBlank?'':(S.issued||today()).replace(/-/g,''));
  document.title=[d,S.site||S.name||'',DN[t]].filter(Boolean).join('_').replace(/[\\\/:*?"<>|]/g,'')}
 window.addEventListener('beforeprint',setTitle);
 window.addEventListener('afterprint',()=>{document.title=TITLE0});
@@ -244,7 +244,7 @@ async function mergePdf(){
     else if(a===180)p.drawText(t,{...o,x:W/2+w/2,y:H-14,rotate:degrees(180)});
     else p.drawText(t,{...o,x:W/2-w/2,y:14})})}
   const bytes=await out.save(),u=URL.createObjectURL(new Blob([bytes],{type:'application/pdf'})),el=document.createElement('a');
-  el.href=u;el.download=[(S.issued||today()).replace(/-/g,''),S.site||S.name||'','完成図書'].filter(Boolean).join('_').replace(/[\\\/:*?"<>|]/g,'')+'.pdf';
+  el.href=u;el.download=[(S.issuedBlank?'':(S.issued||today()).replace(/-/g,'')),S.site||S.name||'','完成図書'].filter(Boolean).join('_').replace(/[\\\/:*?"<>|]/g,'')+'.pdf';
   document.body.appendChild(el);el.click();el.remove();setTimeout(()=>URL.revokeObjectURL(u),5000);
   st.textContent='完了：'+out.getPageCount()+'ページのPDFを保存しました'}
  catch(e){console.error(e);st.textContent='失敗：'+e.message}}
